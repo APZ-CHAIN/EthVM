@@ -1,0 +1,16 @@
+import { blockGauge, errorCounter, rpcLatency } from '../../monitoring/metrics';
+import { getLatestBlock } from './sync';
+
+export async function reportMetrics() {
+  try {
+    const start = Date.now();
+    const block = await getLatestBlock();
+    const latency = (Date.now() - start) / 1000;
+
+    blockGauge.set(block.number);
+    rpcLatency.observe(latency);
+  } catch (err) {
+    errorCounter.inc();
+    console.error('خطا در گزارش متریک‌ها:', err);
+  }
+}
