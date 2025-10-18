@@ -1,0 +1,3 @@
+import { reportMetrics } from './monitor';
+
+setInterval(reportMetrics, 30000); // هر ۳۰ ثانیه
