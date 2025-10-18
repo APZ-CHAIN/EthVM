@@ -1,0 +1,190 @@
+📦 فایل‌های سفارشی EthVM برای APZ Chain
+
+1. packages/config/chain-configs/apz.json
+
+`json
+{
+  "name": "APZ Chain",
+  "chainId": 12345,
+  "rpcUrl": "https://rpc.apzchain.org",
+  "explorerUrl": "https://explorer.apzchain.org",
+  "symbol": "APZ",
+  "decimals": 18,
+  "logo": "/logos/apz.svg"
+}
+`
+
+---
+
+2. packages/decoder/src/abi/apz-token.json
+
+`json
+[
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "name",
+    "outputs": [{ "name": "", "type": "string" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "symbol",
+    "outputs": [{ "name": "", "type": "string" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "decimals",
+    "outputs": [{ "name": "", "type": "uint8" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [{ "name": "owner", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "type": "function"
+  }
+]
+`
+
+---
+
+3. packages/indexer/src/parsers/apz.ts
+
+`ts
+import { LogDescription } from 'ethers';
+import { decodeLog } from '../utils/decode';
+import { apzTokenAbi } from '../../decoder/src/abi/apz-token.json';
+
+export function parseApzLog(log: LogDescription) {
+  const decoded = decodeLog(log, apzTokenAbi);
+  return {
+    event: decoded.name,
+    args: decoded.args,
+    address: log.address
+  };
+}
+`
+
+---
+
+4. packages/web/src/config/chains/apz.ts
+
+`ts
+export const apzChain = {
+  name: 'APZ Chain',
+  chainId: 12345,
+  rpcUrl: 'https://rpc.apzchain.org',
+  explorerUrl: 'https://explorer.apzchain.org',
+  symbol: 'APZ',
+  decimals: 18,
+  logo: '/logos/apz.svg'
+};
+`
+
+---
+
+5. docker-compose.override.yml
+
+`yaml
+version: '3.8'
+services:
+  indexer:
+    environment:
+      - CHAIN=apz
+      - RPC_URL=https://rpc.apzchain.org
+  web:
+    environment:
+      - NEXTPUBLICCHAIN_ID=12345
+      - NEXTPUBLICRPC_URL=https://rpc.apzchain.org
+`
+
+---
+
+6. packages/monitoring/metrics.ts
+
+`ts
+import client from 'prom-client';
+
+export const blockGauge = new client.Gauge({
+  name: 'apzlastsynced_block',
+  help: 'آخرین بلاک سینک‌شده توسط indexer',
+});
+
+export const errorCounter = new client.Counter({
+  name: 'apzindexererrors_total',
+  help: 'تعداد خطاهای رخ‌داده در indexer',
+});
+
+export const rpcLatency = new client.Histogram({
+  name: 'apzrpclatency_seconds',
+  help: 'زمان پاسخ‌دهی RPC به ثانیه',
+  buckets: [0.1, 0.5, 1, 2, 5],
+});
+`
+
+---
+
+7. packages/indexer/src/monitor.ts
+
+`ts
+import { blockGauge, errorCounter, rpcLatency } from '../../monitoring/metrics';
+import { getLatestBlock } from './sync';
+
+export async function reportMetrics() {
+  try {
+    const start = Date.now();
+    const block = await getLatestBlock();
+    const latency = (Date.now() - start) / 1000;
+
+    blockGauge.set(block.number);
+    rpcLatency.observe(latency);
+  } catch (err) {
+    errorCounter.inc();
+    console.error('خطا در گزارش متریک‌ها:', err);
+  }
+}
+`
+
+---
+
+8. تغییر در packages/indexer/src/index.ts
+
+`ts
+import { reportMetrics } from './monitor';
+
+setInterval(reportMetrics, 30000); // هر ۳۰ ثانیه
+`
+
+---
+
+9. Prometheus endpoint در index.ts
+
+`ts
+import client from 'prom-client';
+client.collectDefaultMetrics();
+
+require('http')
+  .createServer((req, res) => {
+    res.setHeader('Content-Type', client.register.contentType);
+    res.end(client.register.metrics());
+  })
+  .listen(9090);
+`
+
+---
+
+10. monitoring/prometheus.yml
+
+`yaml
+scrape_configs:
+  - job_name: 'apz-indexer'
+    static_configs:
+      - targets: ['localhost:9090']
+`
+
+---
