@@ -1,0 +1,14 @@
+📁 5. docker-compose.override.yml (برای اجرای local)
+
+`yaml
+version: '3.8'
+services:
+  indexer:
+    environment:
+      - CHAIN=apz
+      - RPC_URL=https://rpc.apzchain.org
+  web:
+    environment:
+      - NEXTPUBLICCHAIN_ID=12345
+      - NEXTPUBLICRPC_URL=https://rpc.apzchain.org
+`
