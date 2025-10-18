@@ -1,0 +1,12 @@
+import { LogDescription } from 'ethers';
+import { decodeLog } from '../utils/decode';
+import { apzTokenAbi } from '../../decoder/src/abi/apz-token.json';
+
+export function parseApzLog(log: LogDescription) {
+  const decoded = decodeLog(log, apzTokenAbi);
+  return {
+    event: decoded.name,
+    args: decoded.args,
+    address: log.address
+  };
+}
