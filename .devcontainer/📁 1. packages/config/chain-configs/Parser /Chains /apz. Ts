@@ -1,0 +1,9 @@
+export const apzChain = {
+  name: 'APZ Chain',
+  chainId: 12345,
+  rpcUrl: 'https://rpc.apzchain.org',
+  explorerUrl: 'https://explorer.apzchain.org',
+  symbol: 'APZ',
+  decimals: 18,
+  logo: '/logos/apz.svg'
+};
